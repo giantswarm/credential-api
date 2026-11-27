@@ -1,0 +1,49 @@
+name: Credential protocol
+
+on:
+  pull_request: {}
+  merge_group: {}
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: credential-protocol-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  protocol:
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    env:
+      GOFLAGS: -p=2
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+      with:
+        go-version-file: go.mod
+        cache-dependency-path: go.sum
+    - name: Install browser and Helm
+      shell: bash
+      run: |
+        set -euo pipefail
+        npm install --ignore-scripts --no-save --prefix "$RUNNER_TEMP/browser" playwright-core@1.63.0
+        "$RUNNER_TEMP/browser/node_modules/.bin/playwright-core" install --with-deps chromium
+        curl -fsSL https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz -o "$RUNNER_TEMP/helm.tar.gz"
+        curl -fsSL https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz.sha256sum -o "$RUNNER_TEMP/helm.sha256sum"
+        cd "$RUNNER_TEMP"
+        printf '%s  helm.tar.gz\n' "$(cut -d ' ' -f 1 helm.sha256sum)" | sha256sum -c -
+        tar -xzf helm.tar.gz
+        echo "$RUNNER_TEMP/linux-amd64" >> "$GITHUB_PATH"
+    - name: Verify real Kubernetes and browser protocols
+      shell: bash
+      run: |
+        set -euo pipefail
+        export CREDENTIAL_API_PLAYWRIGHT="$RUNNER_TEMP/browser/node_modules/playwright-core/index.mjs"
+        export KUBEBUILDER_ASSETS
+        KUBEBUILDER_ASSETS=$(go run sigs.k8s.io/controller-runtime/tools/setup-envtest@v0.25.3 use 1.37.0 -p path)
+        go test -race -count=1 -v ./...
