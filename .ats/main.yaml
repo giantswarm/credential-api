@@ -1,3 +1,2 @@
-# Created by devctl gen circleci. This file is repository-owned.
-# Add ATS tests and remove their scenario names from skip-steps to enable them.
+# OIDC and Valkey protocol fixtures run in .github/workflows/protocol.yaml.
 skip-steps: [smoke, functional, upgrade]

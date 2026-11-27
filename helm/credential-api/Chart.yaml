@@ -4,5 +4,18 @@ description: Person-bound credential submission and write-only Secret provisioni
 type: application
 version: 0.2.0
 appVersion: 0.2.0
+home: https://github.com/giantswarm/credential-api
+icon: https://s.giantswarm.io/app-icons/giantswarm/1/light.svg
+sources:
+- https://github.com/giantswarm/credential-api
+keywords:
+- credentials
+- agent-platform
+maintainers:
+- name: Giant Swarm
+  email: team-bumblebee@giantswarm.io
 annotations:
-  application.giantswarm.io/team: bumblebee
+  io.giantswarm.application.team: bumblebee
+  io.giantswarm.application.audience: customers
+  io.giantswarm.application.managed: "true"
+  artifacthub.io/license: Apache-2.0

@@ -107,8 +107,17 @@ func (s *Service) AuthenticateManager(ctx context.Context, token string) (string
 	if _, ok := s.configuration.Managers[manager]; !ok {
 		return "", errForbidden
 	}
-	allowed, err := sharedk8s.ReviewSubjectAccess(ctx, s.admin, review.Status.User, authorizationv1.ResourceAttributes{Namespace: s.configuration.Namespace, Verb: "create", Group: "credential.giantswarm.io", Version: "v1", Resource: "operations"})
-	if err != nil || !allowed {
+	extra := make(map[string]authorizationv1.ExtraValue, len(review.Status.User.Extra))
+	for key, values := range review.Status.User.Extra {
+		extra[key] = authorizationv1.ExtraValue(values)
+	}
+	accessReview, err := s.admin.AuthorizationV1().SubjectAccessReviews().Create(ctx, &authorizationv1.SubjectAccessReview{
+		Spec: authorizationv1.SubjectAccessReviewSpec{
+			User: review.Status.User.Username, UID: review.Status.User.UID, Groups: review.Status.User.Groups, Extra: extra,
+			ResourceAttributes: &authorizationv1.ResourceAttributes{Namespace: s.configuration.Namespace, Verb: "create", Group: "credential.giantswarm.io", Version: "v1", Resource: "operations"},
+		},
+	}, metav1.CreateOptions{})
+	if err != nil || accessReview == nil || accessReview.Status.EvaluationError != "" || !accessReview.Status.Allowed || accessReview.Status.Denied {
 		return "", errForbidden
 	}
 	return manager, nil

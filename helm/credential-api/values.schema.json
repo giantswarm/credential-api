@@ -123,7 +123,13 @@
         },
         "managers": {
             "type": "object",
-            "additionalProperties": false
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "minItems": 1
+            }
         },
         "oauth": {
             "type": "object",

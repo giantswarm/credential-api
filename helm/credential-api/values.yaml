@@ -9,7 +9,7 @@ portalOrigin: ""
 audience: credential-api
 tenancy: true
 platformNamespace: kagent
-managers: {}
+managers: {} # @schema additionalProperties: {type: array, items: {type: string}, minItems: 1}
 operationCapacity: 256
 cleanupInterval: 1m
 oauth:

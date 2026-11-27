@@ -613,7 +613,7 @@ func TestRealAuthenticatedProtocol(t *testing.T) {
 	})
 	t.Run("rendered chart server dry run", func(t *testing.T) {
 		// #nosec G204 -- The fixed executable receives loopback fixture addresses as separate arguments.
-		command := exec.CommandContext(t.Context(), "helm", "--kube-context", "credential-api-envtest", "template", "credential-api", "../../helm/credential-api", "--namespace", "agent-platform-credential-api", "--set", "installation=protocol", "--set", "credentialOrigin=https://credentials.example.test", "--set", "portalOrigin=https://portal.example.test", "--set", "ingress.enabled=true", "--set", "ingress.tlsSecretName=credential-tls", "--set", "ingress.portalTlsSecretName=portal-tls", "--set", "oauth.issuer="+f.idp.server.URL)
+		command := exec.CommandContext(t.Context(), "helm", "--kube-context", "credential-api-envtest", "template", "credential-api", "../../helm/credential-api", "--namespace", "agent-platform-credential-api", "-f", "../../helm/credential-api/ci/ci-values.yaml", "--set", "installation=protocol", "--set", "credentialOrigin=https://credentials.example.test", "--set", "portalOrigin=https://portal.example.test", "--set", "ingress.enabled=true", "--set", "ingress.tlsSecretName=credential-tls", "--set", "ingress.portalTlsSecretName=portal-tls", "--set", "oauth.issuer="+f.idp.server.URL)
 		rendered, err := command.CombinedOutput()
 		require.NoError(t, err, string(rendered))
 		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(rendered), 4096)

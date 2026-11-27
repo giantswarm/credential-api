@@ -2,6 +2,18 @@
 
 Person-bound credential submission and write-only Secret provisioning
 
+**Homepage:** <https://github.com/giantswarm/credential-api>
+
+## Maintainers
+
+| Name | Email | Url |
+| ---- | ------ | --- |
+| Giant Swarm | <team-bumblebee@giantswarm.io> |  |
+
+## Source Code
+
+* <https://github.com/giantswarm/credential-api>
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -34,3 +46,7 @@ Person-bound credential submission and write-only Secret provisioning
 | resources.requests.cpu | string | `"50m"` |  |
 | resources.requests.memory | string | `"128Mi"` |  |
 | resources.limits.memory | string | `"256Mi"` |  |
+
+## CI values
+
+`ci/ci-values.yaml` holds the values the CI render (`helm template` in app-build-suite) needs beyond the defaults, such as a `required` value without a default.
