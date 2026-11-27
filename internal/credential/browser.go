@@ -46,11 +46,17 @@ type Browser struct {
 }
 
 type browserFlow struct {
-	Origin    string `json:"origin"`
-	State     string `json:"state"`
-	Verifier  string `json:"verifier"`
-	Nonce     string `json:"nonce"`
-	Operation string `json:"operation"`
+	Origin    string    `json:"origin"`
+	State     string    `json:"state"`
+	Verifier  string    `json:"verifier"`
+	Nonce     string    `json:"nonce"`
+	Operation string    `json:"operation"`
+	Expires   time.Time `json:"expires"`
+}
+
+type sealedRecord struct {
+	Key   string          `json:"key"`
+	Value json.RawMessage `json:"value"`
 }
 
 type browserSession struct {
@@ -114,7 +120,11 @@ func (b *Browser) keep(ctx context.Context, key string, value any, ttl time.Dura
 	if err != nil {
 		return errUnavailable
 	}
-	encrypted, err := b.sealer.Encrypt(string(body))
+	bound, err := json.Marshal(sealedRecord{Key: key, Value: body})
+	if err != nil {
+		return errUnavailable
+	}
+	encrypted, err := b.sealer.Encrypt(string(bound))
 	if err != nil {
 		return errUnavailable
 	}
@@ -136,7 +146,8 @@ func (b *Browser) load(ctx context.Context, key string, value any, consume bool)
 		return errOwner
 	}
 	body, err := b.sealer.Decrypt(encrypted)
-	if err != nil || json.Unmarshal([]byte(body), value) != nil {
+	var record sealedRecord
+	if err != nil || json.Unmarshal([]byte(body), &record) != nil || record.Key != key || json.Unmarshal(record.Value, value) != nil {
 		return errOwner
 	}
 	return nil
@@ -160,7 +171,7 @@ func (b *Browser) signIn(writer http.ResponseWriter, request *http.Request, orig
 		respondError(writer, errInvalid)
 		return
 	}
-	flow := browserFlow{Origin: origin, State: randomToken(), Verifier: oauth2.GenerateVerifier(), Nonce: randomToken(), Operation: operation}
+	flow := browserFlow{Origin: origin, State: randomToken(), Verifier: oauth2.GenerateVerifier(), Nonce: randomToken(), Operation: operation, Expires: time.Now().Add(5 * time.Minute)}
 	key := randomToken()
 	if b.keep(request.Context(), cacheKey("flow", origin, key), flow, 5*time.Minute) != nil {
 		respondError(writer, errUnavailable)
@@ -178,7 +189,7 @@ func (b *Browser) callback(writer http.ResponseWriter, request *http.Request, or
 		return
 	}
 	var flow browserFlow
-	if b.load(request.Context(), cacheKey("flow", origin, flowBinding.Value), &flow, true) != nil || flow.Origin != origin || subtle.ConstantTimeCompare([]byte(flow.State), []byte(request.URL.Query().Get("state"))) != 1 || request.URL.Query().Get("code") == "" || request.URL.Query().Has("error") {
+	if b.load(request.Context(), cacheKey("flow", origin, flowBinding.Value), &flow, true) != nil || flow.Origin != origin || !time.Now().Before(flow.Expires) || subtle.ConstantTimeCompare([]byte(flow.State), []byte(request.URL.Query().Get("state"))) != 1 || request.URL.Query().Get("code") == "" || request.URL.Query().Has("error") {
 		respondError(writer, errOwner)
 		return
 	}

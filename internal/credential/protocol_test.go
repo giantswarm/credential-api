@@ -423,6 +423,29 @@ func TestRealAuthenticatedProtocol(t *testing.T) {
 		defer func() { _ = response.Body.Close() }()
 		require.Equal(t, http.StatusBadRequest, response.StatusCode)
 	})
+	t.Run("encrypted sessions cannot be relocated", func(t *testing.T) {
+		operation := f.open(t, f.request("session-binding", "alice"))
+		owner := f.client(t)
+		f.login(t, owner, f.standalone.URL, operation.ID, "alice")
+		origin, err := url.Parse(f.standalone.URL)
+		require.NoError(t, err)
+		var ownerCookie string
+		for _, cookie := range owner.Jar.Cookies(origin) {
+			if cookie.Name == sessionCookie {
+				ownerCookie = cookie.Value
+			}
+		}
+		require.NotEmpty(t, ownerCookie)
+		ciphertext, err := f.redis.Get(cacheKey("session", f.standalone.URL, ownerCookie))
+		require.NoError(t, err)
+		attackerCookie := randomToken()
+		require.NoError(t, f.redis.Set(cacheKey("session", f.standalone.URL, attackerCookie), ciphertext))
+		attacker := f.client(t)
+		attacker.Jar.SetCookies(origin, []*http.Cookie{{Name: sessionCookie, Value: attackerCookie, Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode}})
+		status, body, _ := protocolRequest(t, attacker, http.MethodGet, f.standalone.URL+browserPrefix+"/api/operations/"+operation.ID, nil, nil)
+		require.Equal(t, http.StatusForbidden, status)
+		require.NotContains(t, string(body), "csrf")
+	})
 	t.Run("expiry cancellation and stale confirmation", func(t *testing.T) {
 		operation := f.open(t, f.request("cancel", "alice"))
 		stored, err := f.service.store.read(t.Context(), operation.ID)

@@ -405,6 +405,9 @@ func (s *Service) Save(ctx context.Context, person Person, token, id string, req
 			return nil, writeError(err)
 		}
 	}
+	if time.Until(operation.ExpiresAt) < 45*time.Second {
+		return nil, errConflict
+	}
 	operation.State = saving
 	if err := s.store.put(recordCtx, operation); err != nil {
 		if err == errConflict {
@@ -413,7 +416,7 @@ func (s *Service) Save(ctx context.Context, person Person, token, id string, req
 		return nil, errUncertain
 	}
 	cancelRecord()
-	recordCtx, cancelRecord = context.WithTimeout(context.WithoutCancel(ctx), 45*time.Second)
+	recordCtx, cancelRecord = context.WithDeadline(context.WithoutCancel(ctx), operation.ExpiresAt)
 	defer cancelRecord()
 	writeCtx, cancelWrite := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 	defer cancelWrite()
