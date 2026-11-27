@@ -37,7 +37,7 @@ async function start() {
     const label = document.createElement('label'); label.textContent = field.title || name;
     const input = document.createElement('input'); input.name = name; input.autocomplete = 'off';
     input.type = field.type === 'file' ? 'file' : field.type === 'boolean' ? 'checkbox' : field.type === 'number' || field.type === 'integer' ? 'number' : 'password';
-    input.required = operation.fields.required.includes(name) && field.type !== 'boolean';
+    input.required = (operation.fields.required || []).includes(name) && field.type !== 'boolean';
     if (field.minLength) input.minLength = field.minLength;
     if (field.maxLength) input.maxLength = field.maxLength;
     if (field.minimum !== undefined) input.min = field.minimum;

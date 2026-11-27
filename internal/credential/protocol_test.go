@@ -361,7 +361,11 @@ func TestRealAuthenticatedProtocol(t *testing.T) {
 			t.Skip("set CREDENTIAL_API_PLAYWRIGHT to playwright-core/index.mjs")
 		}
 		for index, origin := range []string{f.standalone.URL, f.portal.URL} {
-			operation := f.open(t, f.request(fmt.Sprintf("dom-%d", index), "alice"))
+			creation := f.request(fmt.Sprintf("dom-%d", index), "alice")
+			if index == 1 {
+				creation.Fields.Required = nil
+			}
+			operation := f.open(t, creation)
 			f.idp.mu.Lock()
 			f.idp.subject = "alice"
 			f.idp.mu.Unlock()
