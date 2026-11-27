@@ -3,6 +3,9 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "audience": {
+            "type": "string"
+        },
         "baseDomain": {
             "type": "string"
         },
@@ -17,6 +20,9 @@
         "ciliumNetworkPolicy": {
             "type": "object",
             "additionalProperties": true
+        },
+        "cleanupInterval": {
+            "type": "string"
         },
         "cluster": {
             "type": "object",
@@ -34,8 +40,26 @@
         "clusterID": {
             "type": "string"
         },
+        "credentialOrigin": {
+            "type": "string"
+        },
+        "existingSecret": {
+            "type": "string"
+        },
         "externalDNSIP": {
             "type": "string"
+        },
+        "gatewayAPI": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "parentRefs": {
+                    "type": "array"
+                }
+            }
         },
         "gcpProject": {
             "type": "string"
@@ -62,7 +86,10 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-                "name": {
+                "registry": {
+                    "type": "string"
+                },
+                "repository": {
                     "type": "string"
                 },
                 "tag": {
@@ -70,23 +97,114 @@
                 }
             }
         },
+        "ingress": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "className": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "portalTlsSecretName": {
+                    "type": "string"
+                },
+                "tlsSecretName": {
+                    "type": "string"
+                }
+            }
+        },
+        "installation": {
+            "type": "string"
+        },
         "managementCluster": {
+            "type": "string"
+        },
+        "managers": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "minItems": 1
+            }
+        },
+        "oauth": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "caSecretName": {
+                    "type": "string"
+                },
+                "clientId": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "kubernetesAudience": {
+                    "type": "string"
+                }
+            }
+        },
+        "operationCapacity": {
+            "type": "integer"
+        },
+        "platformNamespace": {
+            "type": "string"
+        },
+        "portalOrigin": {
             "type": "string"
         },
         "provider": {
             "type": "string"
         },
-        "registry": {
+        "replicas": {
+            "type": "integer"
+        },
+        "resources": {
             "type": "object",
             "additionalProperties": false,
             "properties": {
-                "domain": {
+                "limits": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "memory": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "requests": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "cpu": {
+                            "type": "string"
+                        },
+                        "memory": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "serviceAccount": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
                     "type": "string"
                 }
             }
         },
         "subscriptionID": {
             "type": "string"
+        },
+        "tenancy": {
+            "type": "boolean"
         }
     }
 }

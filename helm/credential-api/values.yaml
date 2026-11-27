@@ -1,12 +1,36 @@
-# This file is a Helm values file for the credential-api chart.
-#
-# To learn more about how to configure your app on your cluster
-# and override the default values in here, visit:
-#
-#   https://docs.giantswarm.io/tutorials/fleet-management/app-platform/app-configuration/#basic-values-merging-example
-#
 image:
-  name: "giantswarm/credential-api"
+  registry: gsoci.azurecr.io
+  repository: giantswarm/credential-api
   tag: ""
-registry:
-  domain: gsoci.azurecr.io
+replicas: 2
+installation: ""
+credentialOrigin: ""
+portalOrigin: ""
+audience: credential-api
+tenancy: true
+platformNamespace: kagent
+managers: {}  # @schema additionalProperties: {type: array, items: {type: string}, minItems: 1}
+operationCapacity: 256
+cleanupInterval: 1m
+oauth:
+  issuer: ""
+  clientId: credential-api
+  kubernetesAudience: dex-k8s-authenticator
+  caSecretName: ""
+existingSecret: credential-api
+serviceAccount:
+  name: credential-api
+ingress:
+  enabled: false
+  className: nginx
+  tlsSecretName: ""
+  portalTlsSecretName: ""
+gatewayAPI:
+  enabled: false
+  parentRefs: []
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi

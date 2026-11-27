@@ -1,0 +1,206 @@
+{{- if or (not .Values.installation) (not .Values.credentialOrigin) (not .Values.oauth.issuer) }}
+{{- fail "installation, credentialOrigin and oauth.issuer are required" }}
+{{- end }}
+{{- $issuerCAFile := "" }}
+{{- if .Values.oauth.caSecretName }}{{ $issuerCAFile = "/etc/credential-api/ca/ca.crt" }}{{ end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: credential-api-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: |
+    {{ dict "service" (dict "installation" .Values.installation "origin" .Values.credentialOrigin "portalOrigin" .Values.portalOrigin "namespace" .Release.Namespace "audience" .Values.audience "tenancy" .Values.tenancy "platformNamespace" .Values.platformNamespace "managers" .Values.managers "capacity" .Values.operationCapacity) "issuer" .Values.oauth.issuer "clientId" .Values.oauth.clientId "kubernetesAudience" .Values.oauth.kubernetesAudience "cleanupInterval" .Values.cleanupInterval "issuerCaFile" $issuerCAFile | toJson }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: credential-operations
+  namespace: {{ .Release.Namespace }}
+spec:
+  hard:
+    count/configmaps: "4096"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: credential-api
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups: [""]
+  resources: [configmaps]
+  verbs: [get, list, create, update, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: credential-api
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: credential-api
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Namespace }}-credential-api
+rules:
+- apiGroups: [authentication.k8s.io]
+  resources: [tokenreviews]
+  verbs: [create]
+- apiGroups: [authorization.k8s.io]
+  resources: [subjectaccessreviews]
+  verbs: [create]
+- apiGroups: [""]
+  resources: [namespaces]
+  verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Namespace }}-credential-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}-credential-api
+subjects:
+- kind: ServiceAccount
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: credential-managers
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups: [credential.giantswarm.io]
+  resources: [operations]
+  verbs: [create]
+{{- if .Values.managers }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: credential-managers
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: credential-managers
+subjects:
+{{- range $identity, $_ := .Values.managers }}
+- kind: User
+  name: {{ $identity | quote }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: credential-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: credential-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: credential-api
+      annotations:
+        checksum/config: {{ dict "values" .Values | toJson | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: credential-api
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: credential-api
+        image: {{ printf "%s/%s:%s" .Values.image.registry .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) | quote }}
+        ports:
+        - name: http
+          containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 72
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+        resources: {{ .Values.resources | toYaml | nindent 10 }}
+        volumeMounts:
+        - name: configuration
+          mountPath: /etc/credential-api
+          readOnly: true
+        - name: secrets
+          mountPath: /etc/credential-api/secrets
+          readOnly: true
+        {{- if .Values.oauth.caSecretName }}
+        - name: issuer-ca
+          mountPath: /etc/credential-api/ca
+          readOnly: true
+        {{- end }}
+      volumes:
+      - name: configuration
+        configMap:
+          name: credential-api-config
+      - name: secrets
+        secret:
+          secretName: {{ .Values.existingSecret }}
+          defaultMode: 0440
+      {{- if .Values.oauth.caSecretName }}
+      - name: issuer-ca
+        secret:
+          secretName: {{ .Values.oauth.caSecretName }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: credential-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app.kubernetes.io/name: credential-api
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
