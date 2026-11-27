@@ -1,7 +1,7 @@
 image:
   registry: gsoci.azurecr.io
   repository: giantswarm/credential-api
-  tag: "0.2.0"
+  tag: ""
 replicas: 2
 installation: ""
 credentialOrigin: ""

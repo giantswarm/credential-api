@@ -20,7 +20,7 @@ Person-bound credential submission and write-only Secret provisioning
 |-----|------|---------|-------------|
 | image.registry | string | `"gsoci.azurecr.io"` |  |
 | image.repository | string | `"giantswarm/credential-api"` |  |
-| image.tag | string | `"0.2.0"` |  |
+| image.tag | string | `""` |  |
 | replicas | int | `2` |  |
 | installation | string | `""` |  |
 | credentialOrigin | string | `""` |  |
